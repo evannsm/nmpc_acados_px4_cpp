@@ -17,7 +17,7 @@ This package was created during a PhD at Georgia Tech's FACTSLab as a high-perfo
 - **Error-state cost formulation** — references passed as stage-wise parameters, not embedded in the cost
 - **Input constraints** — hard bounds on thrust `[0, 27] N` and body rates `[-0.8, 0.8] rad/s`
 - **PX4 integration** — publishes attitude setpoints and offboard commands via `px4_msgs`
-- **Structured logging** — optional CSV logging via ROS2Logger_cpp
+- **Structured logging** — optional CSV logging via ros2_logger_cpp
 
 ## MPC Formulation
 
@@ -172,7 +172,7 @@ nmpc_acados_px4_cpp/
 
 - [quad_platforms_cpp](https://github.com/evannsm/quad_platforms_cpp) — platform mass and throttle mapping
 - [quad_trajectories_cpp](https://github.com/evannsm/quad_trajectories_cpp) — trajectory definitions and autodiff velocities
-- [ROS2Logger_cpp](https://github.com/evannsm/ROS2Logger_cpp) — CSV logging
+- [ros2_logger_cpp](https://github.com/evannsm/ROS2Logger_cpp) — CSV logging
 - [px4_msgs](https://github.com/PX4/px4_msgs) — PX4 message types
 - [nmpc_acados_px4](https://github.com/evannsm/nmpc_acados_px4) — Python package for C solver code generation
 - Eigen3
