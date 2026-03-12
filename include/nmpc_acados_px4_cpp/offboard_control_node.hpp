@@ -42,7 +42,8 @@ public:
         bool                                     spin,
         bool                                     logging_enabled,
         std::string                              log_file,
-        std::optional<double>                    flight_period_override);
+        std::optional<double>                    flight_period_override,
+        bool                                     feedforward = false);
 
     ~OffboardControlNode();
 
@@ -93,6 +94,7 @@ private:
     bool spin_;
     bool logging_enabled_;
     std::string log_file_;
+    bool feedforward_ = false;  ///< Differential-flatness feedforward (f8_contraction only)
 
     std::unique_ptr<quad_platforms_cpp::PlatformConfig> platform_;
 
@@ -154,6 +156,10 @@ private:
     NmpcCtrlMat control_buffer_ = NmpcCtrlMat::Zero();
     int  buffer_index_ = 0;
     bool buffer_valid_ = false;
+
+    // ── Feedforward (differential flatness, f8_contraction only) ─────────
+    NmpcCtrlMat u_ff_traj_  = NmpcCtrlMat::Zero();  ///< [F(N), p, q, r] per stage
+    bool        u_ff_valid_ = false;
 
     std::array<double, 4> normalized_input_ = {0.0, 0.0, 0.0, 0.0};
     double compute_time_ = 0.0;

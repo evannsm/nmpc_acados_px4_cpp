@@ -52,14 +52,17 @@ public:
     /**
      * Solve one SQP_RTI step.
      *
-     * @param x0  Current 9D state [p, v, euler], yaw may be unwrapped.
-     * @param xd  Reference horizon (NMPC_N × NMPC_NX).
-     *            Each row: [x_ref, y_ref, z_ref, vx_ref, vy_ref, vz_ref,
-     *                       roll_ref, pitch_ref, yaw_ref]
-     *            roll_ref and pitch_ref are typically zero.
-     * @return    Optimal control sequence (N×4) + solver status.
+     * @param x0          Current 9D state [p, v, euler], yaw may be unwrapped.
+     * @param xd          Reference horizon (NMPC_N × NMPC_NX).
+     *                    Each row: [x_ref, y_ref, z_ref, vx_ref, vy_ref, vz_ref,
+     *                               roll_ref, pitch_ref, yaw_ref]
+     * @param u_ref_traj  Optional feedforward control horizon (NMPC_N × NMPC_NU).
+     *                    Each row: [F_ref (N), p_ref, q_ref, r_ref].
+     *                    When nullptr, hover thrust is used as control reference.
+     * @return            Optimal control sequence (N×4) + solver status.
      */
-    NmpcResult solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd);
+    NmpcResult solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd,
+                     const NmpcCtrlMat* u_ref_traj = nullptr);
 
 private:
     holybro_euler_err_solver_capsule* capsule_    = nullptr;

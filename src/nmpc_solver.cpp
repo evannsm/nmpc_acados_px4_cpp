@@ -33,7 +33,8 @@ NmpcSolver::~NmpcSolver()
     }
 }
 
-NmpcResult NmpcSolver::solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd)
+NmpcResult NmpcSolver::solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd,
+                             const NmpcCtrlMat* u_ref_traj)
 {
     // ---- initial state constraint ----
     double lbx0[NMPC_NX], ubx0[NMPC_NX];
@@ -46,8 +47,8 @@ NmpcResult NmpcSolver::solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd)
     ocp_nlp_constraints_model_set(nlp_config_, nlp_dims_, nlp_in_, nlp_out_,
                                   0, "ubx", ubx0);
 
-    // hover control reference [thrust, 0, 0, 0]
-    const double u_ref[NMPC_NU] = {hover_thrust_, 0.0, 0.0, 0.0};
+    // hover control reference (used when no feedforward is provided)
+    const double hover_u_ref[NMPC_NU] = {hover_thrust_, 0.0, 0.0, 0.0};
 
     // ---- set stage parameters [p_ref(3), v_ref(3), euler_ref(3), u_ref(4)] ----
     double param[NMPC_NP];
@@ -64,11 +65,18 @@ NmpcResult NmpcSolver::solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd)
         param[6] = xd(i, 6);
         param[7] = xd(i, 7);
         param[8] = xd(i, 8);
-        // u_ref
-        param[9]  = u_ref[0];
-        param[10] = u_ref[1];
-        param[11] = u_ref[2];
-        param[12] = u_ref[3];
+        // u_ref: feedforward if provided, else hover
+        if (u_ref_traj) {
+            param[9]  = (*u_ref_traj)(i, 0);
+            param[10] = (*u_ref_traj)(i, 1);
+            param[11] = (*u_ref_traj)(i, 2);
+            param[12] = (*u_ref_traj)(i, 3);
+        } else {
+            param[9]  = hover_u_ref[0];
+            param[10] = hover_u_ref[1];
+            param[11] = hover_u_ref[2];
+            param[12] = hover_u_ref[3];
+        }
         holybro_euler_err_acados_update_params(capsule_, i, param, NMPC_NP);
     }
 
@@ -78,8 +86,16 @@ NmpcResult NmpcSolver::solve(const NmpcStateVec& x0, const NmpcRefMatrix& xd)
         param[0] = xd(last, 0); param[1] = xd(last, 1); param[2] = xd(last, 2);
         param[3] = xd(last, 3); param[4] = xd(last, 4); param[5] = xd(last, 5);
         param[6] = xd(last, 6); param[7] = xd(last, 7); param[8] = xd(last, 8);
-        param[9]  = u_ref[0]; param[10] = u_ref[1];
-        param[11] = u_ref[2]; param[12] = u_ref[3];
+        if (u_ref_traj) {
+            const int last_u = NMPC_N - 1;
+            param[9]  = (*u_ref_traj)(last_u, 0);
+            param[10] = (*u_ref_traj)(last_u, 1);
+            param[11] = (*u_ref_traj)(last_u, 2);
+            param[12] = (*u_ref_traj)(last_u, 3);
+        } else {
+            param[9]  = hover_u_ref[0]; param[10] = hover_u_ref[1];
+            param[11] = hover_u_ref[2]; param[12] = hover_u_ref[3];
+        }
         holybro_euler_err_acados_update_params(capsule_, NMPC_N, param, NMPC_NP);
     }
 

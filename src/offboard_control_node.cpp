@@ -26,7 +26,8 @@ OffboardControlNode::OffboardControlNode(
     bool                  spin,
     bool                  logging_enabled,
     std::string           log_file,
-    std::optional<double> flight_period_override)
+    std::optional<double> flight_period_override,
+    bool                  feedforward)
 : rclcpp::Node("nmpc_euler_err_offboard_node"),
   sim_(platform_type == qp::PlatformType::SIM),
   platform_type_(platform_type),
@@ -37,6 +38,7 @@ OffboardControlNode::OffboardControlNode(
   spin_(spin),
   logging_enabled_(logging_enabled),
   log_file_(std::move(log_file)),
+  feedforward_(feedforward),
   offboard_mode_rc_switch_on_(sim_)   // sim: default ON; hw: wait for RC
 {
     // ── Platform ────────────────────────────────────────────────────────────
@@ -398,9 +400,66 @@ void OffboardControlNode::compute_control_timer_callback()
     // Build N×9 reference matrix
     reff_ = build_ref_matrix(trajectory_type_, reference_time_);
 
+    // Differential-flatness feedforward (f8_contraction only)
+    if (trajectory_type_ == qt::TrajectoryType::F8_CONTRACTION && feedforward_) {
+        qt::TrajContext ctx;
+        ctx.sim          = sim_;
+        ctx.hover_mode   = hover_mode_;
+        ctx.spin         = spin_;
+        ctx.double_speed = false;
+        ctx.short_variant= short_variant_;
+
+        auto ff = qt::generate_feedforward_trajectory(
+            trajectory_type_, ctx, reference_time_, HORIZON, NUM_STEPS);
+
+        // Replace euler_ref cols (6=roll, 7=pitch) with feedforward attitudes.
+        // x_ff layout: [px,py,pz,vx,vy,vz, f, phi, th, psi]  (indices 7,8)
+        for (int i = 0; i < NUM_STEPS; ++i) {
+            reff_(i, 6) = ff.x_ff(i, 7);   // phi (roll)
+            reff_(i, 7) = ff.x_ff(i, 8);   // th  (pitch)
+            // reff_(i, 8) = yaw from build_ref_matrix — leave as-is
+        }
+
+        // Build NMPC feedforward control: u = [F (N), p, q, r]
+        // flat_to_x_u gives u_ff = [df, dphi, dth, dpsi] in Euler-rate space.
+        // Convert [dphi, dth, dpsi] → body rates [p, q, r] via the inverse
+        // of the ZYX Euler-rate kinematic matrix T:
+        //   [dphi, dth, dpsi]^T = T(roll, pitch) @ [p, q, r]^T
+        const double mass = platform_->mass();
+        for (int i = 0; i < NUM_STEPS; ++i) {
+            const double f_spec   = ff.x_ff(i, 6);   // specific thrust (m/s²)
+            const double phi_ff   = ff.x_ff(i, 7);   // roll
+            const double pitch_ff = ff.x_ff(i, 8);   // pitch
+            const double dphi_ff  = ff.u_ff(i, 1);
+            const double dth_ff   = ff.u_ff(i, 2);
+            const double dpsi_ff  = ff.u_ff(i, 3);
+
+            const double sr = std::sin(phi_ff),   cr = std::cos(phi_ff);
+            const double sp = std::sin(pitch_ff), cp = std::cos(pitch_ff);
+            const double tp = sp / cp;
+
+            Eigen::Matrix3d T;
+            T << 1.0,  sr * tp,   cr * tp,
+                 0.0,  cr,        -sr,
+                 0.0,  sr / cp,   cr / cp;
+
+            Eigen::Vector3d euler_rates(dphi_ff, dth_ff, dpsi_ff);
+            Eigen::Vector3d body_rates = T.colPivHouseholderQr().solve(euler_rates);
+
+            u_ff_traj_(i, 0) = mass * f_spec;
+            u_ff_traj_(i, 1) = body_rates[0];   // p
+            u_ff_traj_(i, 2) = body_rates[1];   // q
+            u_ff_traj_(i, 3) = body_rates[2];   // r
+        }
+        u_ff_valid_ = true;
+    } else {
+        u_ff_valid_ = false;
+    }
+
     // Solve NMPC
     auto t_start   = std::chrono::steady_clock::now();
-    NmpcResult res = nmpc_solver_->solve(nmpc_state_, reff_);
+    NmpcResult res = nmpc_solver_->solve(nmpc_state_, reff_,
+                                         u_ff_valid_ ? &u_ff_traj_ : nullptr);
     auto t_end     = std::chrono::steady_clock::now();
     compute_time_  = std::chrono::duration<double>(t_end - t_start).count();
     last_status_   = res.status;

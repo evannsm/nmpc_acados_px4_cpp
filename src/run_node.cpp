@@ -27,6 +27,7 @@ struct Args {
     bool   double_speed = false;
     bool   short_variant= false;
     bool   spin         = false;
+    bool   feedforward  = false;
     bool   log          = false;
     std::string log_file;
     std::optional<double> flight_period;
@@ -43,6 +44,7 @@ static std::string generate_log_filename(const Args& args) {
     name += args.double_speed ? "_2x" : "_1x";
     if (args.short_variant) name += "_short";
     if (args.spin)          name += "_spin";
+    name += "_cpp";
     return name;
 }
 
@@ -65,6 +67,7 @@ static void print_usage() {
         "  --double-speed              Use 2x trajectory speed\n"
         "  --short                     Use short variant (fig8_vert)\n"
         "  --spin                      Enable spin (circle_horz, helix)\n"
+        "  --ff                        Enable differential-flatness feedforward (f8_contraction only)\n"
         "  --flight-period SECONDS     Override default duration (sim: 30s, hw: 60s)\n"
         "  --log                       Enable CSV data logging\n"
         "  --log-file NAME             Custom log filename stem (requires --log)\n"
@@ -104,6 +107,8 @@ static Args parse_args(int argc, char* argv[]) {
             args.short_variant= true;
         } else if (arg == "--spin") {
             args.spin        = true;
+        } else if (arg == "--ff") {
+            args.feedforward = true;
         } else if (arg == "--log") {
             args.log         = true;
         } else if (arg == "--log-file" && i + 1 < argc) {
@@ -126,6 +131,9 @@ static Args parse_args(int argc, char* argv[]) {
     }
     if (args.trajectory == qt::TrajectoryType::HOVER && !args.hover_mode.has_value()) {
         throw std::runtime_error("--hover-mode is required when --trajectory=hover");
+    }
+    if (args.feedforward && args.trajectory != qt::TrajectoryType::F8_CONTRACTION) {
+        throw std::runtime_error("--ff is only valid with --trajectory=f8_contraction");
     }
     if (!args.log_file.empty() && !args.log) {
         throw std::runtime_error("--log-file requires --log");
@@ -172,6 +180,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Speed:         " << (args.double_speed ? "Double (2x)" : "Regular (1x)") << "\n";
     std::cout << "Short:         " << (args.short_variant ? "Enabled" : "Disabled") << "\n";
     std::cout << "Spin:          " << (args.spin ? "Enabled" : "Disabled") << "\n";
+    std::cout << "Feedforward:   " << (args.feedforward ? "Enabled (diff. flatness)" : "Disabled") << "\n";
     double fp = args.flight_period.value_or(
         args.platform == qp::PlatformType::HARDWARE ? 60.0 : 30.0);
     std::cout << "Flight period: " << fp << " s\n";
@@ -191,7 +200,8 @@ int main(int argc, char* argv[]) {
             args.spin,
             args.log,
             log_file,
-            args.flight_period);
+            args.flight_period,
+            args.feedforward);
 
         rclcpp::spin(node);
     } catch (const std::exception& e) {
