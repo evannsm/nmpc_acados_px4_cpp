@@ -33,8 +33,11 @@ find_package(ros2_logger_cpp REQUIRED)
 # Acados paths
 # ---------------------------------------------------------------------------
 set(ACADOS_ROOT
-    "/home/egmc/acados"
+    "$ENV{ACADOS_ROOT}"
     CACHE PATH "Acados installation root (contains include/ and lib/)")
+if(ACADOS_ROOT STREQUAL "")
+    set(ACADOS_ROOT "/opt/acados")
+endif()
 
 # Path to the generated solver directory.
 # The Python package must be run FIRST to generate these files.
@@ -48,8 +51,8 @@ if(NOT EXISTS "${GENERATED_SOLVER_DIR}/acados_solver_holybro_euler_err.h")
   message(FATAL_ERROR
     "\n[nmpc_acados_px4_cpp] Generated solver header not found at:\n"
     "  ${GENERATED_SOLVER_DIR}/acados_solver_holybro_euler_err.h\n\n"
-    "Run the Python package first to generate the acados C solver:\n"
-    "  ros2 run nmpc_acados_px4 run_node --platform sim --trajectory hover --hover-mode 1\n"
+    "Generate the solver first (inside Docker: make generate_nmpc_solver):\n"
+    "  cd /workspace && python3 src/nmpc_acados_px4/generate_solver.py\n"
     "Then rebuild this package.\n")
 endif()
 
