@@ -51,8 +51,10 @@ if(NOT EXISTS "${GENERATED_SOLVER_DIR}/acados_solver_holybro_euler_err.h")
   message(FATAL_ERROR
     "\n[nmpc_acados_px4_cpp] Generated solver header not found at:\n"
     "  ${GENERATED_SOLVER_DIR}/acados_solver_holybro_euler_err.h\n\n"
-    "Generate the solver first (inside Docker: make generate_nmpc_solver):\n"
-    "  cd /workspace && python3 src/nmpc_acados_px4/generate_solver.py\n"
+    "Generate the solver first (inside Docker):\n"
+    "  cd /workspace && python3 src/nmpc_acados_px4/ensure_solver.py --platform sim\n"
+    "or use the root make target:\n"
+    "  make generate_nmpc_solver PLATFORM=sim\n"
     "Then rebuild this package.\n")
 endif()
 
