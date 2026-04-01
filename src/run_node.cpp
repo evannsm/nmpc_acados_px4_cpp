@@ -68,7 +68,7 @@ static void print_usage() {
         "  --double-speed              Use 2x trajectory speed\n"
         "  --short                     Use short variant (fig8_vert)\n"
         "  --spin                      Enable spin (circle_horz, helix)\n"
-        "  --ff                        Enable differential-flatness feedforward (fig8_contraction only)\n"
+        "  --ff                        Enable differential-flatness feedforward\n"
         "  --flight-period SECONDS     Override default duration (sim: 30s, hw: 60s)\n"
         "  --log                       Enable CSV data logging\n"
         "  --log-file NAME             Custom log filename stem (requires --log)\n"
@@ -133,9 +133,6 @@ static Args parse_args(int argc, char* argv[]) {
     if (args.trajectory == qt::TrajectoryType::HOVER && !args.hover_mode.has_value()) {
         throw std::runtime_error("--hover-mode is required when --trajectory=hover");
     }
-    if (args.feedforward && args.trajectory != qt::TrajectoryType::FIG8_CONTRACTION) {
-        throw std::runtime_error("--ff is only valid with --trajectory=fig8_contraction");
-    }
     if (!args.log_file.empty() && !args.log) {
         throw std::runtime_error("--log-file requires --log");
     }
@@ -181,7 +178,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Speed:         " << (args.double_speed ? "Double (2x)" : "Regular (1x)") << "\n";
     std::cout << "Short:         " << (args.short_variant ? "Enabled" : "Disabled") << "\n";
     std::cout << "Spin:          " << (args.spin ? "Enabled" : "Disabled") << "\n";
-    std::cout << "Feedforward:   " << (args.feedforward ? "Enabled (diff. flatness)" : "Disabled") << "\n";
+    std::cout << "Feedforward:   " << (args.feedforward ? "Enabled" : "Disabled") << "\n";
     double fp = args.flight_period.value_or(
         args.platform == qp::PlatformType::HARDWARE ? 60.0 : 30.0);
     std::cout << "Flight period: " << fp << " s\n";

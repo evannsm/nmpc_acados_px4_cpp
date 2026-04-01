@@ -384,13 +384,15 @@ void OffboardControlNode::compute_control_timer_callback()
     // Build N×9 reference matrix
     reff_ = build_ref_matrix(trajectory_type_, reference_time_);
 
-    // Differential-flatness feedforward (fig8_contraction only)
-    if (trajectory_type_ == qt::TrajectoryType::FIG8_CONTRACTION && feedforward_) {
+    // Differential-flatness feedforward from the shared flatness model.
+    if (feedforward_) {
         qt::TrajContext ctx;
         ctx.sim          = sim_;
         ctx.hover_mode   = hover_mode_;
         ctx.spin         = spin_;
-        ctx.double_speed = false;
+        ctx.double_speed = (trajectory_type_ == qt::TrajectoryType::FIG8_CONTRACTION)
+            ? false
+            : double_speed_;
         ctx.short_variant= short_variant_;
 
         auto ff = qt::generate_feedforward_trajectory(
