@@ -91,7 +91,7 @@ OffboardControlNode::OffboardControlNode(
             rc_channel_callback(msg);
         });
     // ── NMPC solver ──────────────────────────────────────────────────────
-    double hover_thrust = platform_->mass() * 9.806;
+    double hover_thrust = platform_->mass() * 9.8;  // Match Gazebo world
     RCLCPP_INFO(get_logger(), "[NMPC] Creating solver (N=%d, Tf=%.1f s)...", NUM_STEPS, HORIZON);
     nmpc_solver_ = std::make_unique<NmpcSolver>(platform_->mass(), hover_thrust);
     RCLCPP_INFO(get_logger(), "[NMPC] Solver ready.");
