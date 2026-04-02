@@ -126,7 +126,7 @@ OffboardControlNode::OffboardControlNode(
 
         // Constant metadata (written in every row)
         csv_logger_->set_const_string(COL_PLATFORM,    qp::platform_type_to_string(platform_type_));
-        csv_logger_->set_const_string(COL_CONTROLLER,  "nmpc_acados_px4_cpp");
+        csv_logger_->set_const_string(COL_CONTROLLER,  "NMPC");
         csv_logger_->set_const_string(COL_TRAJECTORY,  qt::trajectory_type_to_string(trajectory_type_));
         csv_logger_->set_const_string(COL_TRAJ_DOUBLE, double_speed_ ? "DblSpd" : "NormSpd");
         csv_logger_->set_const_string(COL_TRAJ_SHORT,  short_variant_ ? "Short" : "NotShort");
